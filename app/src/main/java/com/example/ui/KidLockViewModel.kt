@@ -1,308 +1,395 @@
-package com.example.ui
+package com.example.data.local
 
-import android.app.Application
-import androidx.lifecycle.AndroidViewModel
-import androidx.lifecycle.viewModelScope
-import com.example.KidLockApp
+import android.content.Context
+import android.content.SharedPreferences
 import com.example.model.DeviceRole
-import com.example.model.KidTheme
-import com.example.model.PairedChildDevice
-import com.example.model.RequestStatus
-import com.example.model.TempUnlockCode
-import com.example.model.ThemeRegistry
-import com.example.model.UnlockRequest
-import com.example.network.P2PMessage
-import com.example.service.KidLockDeviceService
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.launch
+import java.security.MessageDigest
+import java.security.SecureRandom
+import java.util.UUID
 
-class KidLockViewModel(application: Application) : AndroidViewModel(application) {
+class SecurityPreferences(context: Context) {
+    private val prefs: SharedPreferences = context.getSharedPreferences("kidlock_secure_prefs", Context.MODE_PRIVATE)
 
-    val app = application as KidLockApp
-    val repository = app.repository
-    val securityPrefs = app.securityPrefs
-    private val repo = repository
-    private val prefs = securityPrefs
-
-    // Navigation and Role state
-    private val _deviceRole = MutableStateFlow(prefs.getDeviceRole())
-    val deviceRole: StateFlow<DeviceRole> = _deviceRole.asStateFlow()
-
-    val pairedDevices: StateFlow<List<PairedChildDevice>> = repo.pairedDevices
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-
-    val pendingRequests: StateFlow<List<UnlockRequest>> = repo.pendingRequests
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-
-    val discoveredDevices: StateFlow<List<PairedChildDevice>> = repo.discoveryManager.discoveredDevices
-    val isSearchingDevices: StateFlow<Boolean> = repo.discoveryManager.isSearching
-    val isAdvertising: StateFlow<Boolean> = repo.discoveryManager.isAdvertising
-
-    val isChildLocked: StateFlow<Boolean> = repo.isChildLocked
-    val activeTheme: StateFlow<KidTheme> = repo.activeTheme
-    val incomingPairRequest: StateFlow<P2PMessage.PairRequest?> = repo.incomingPairRequest
-    val unlockStatusMessage: StateFlow<String?> = repo.latestUnlockStatusMessage
-    val latestUnlockStatusMessage: StateFlow<String?> = repo.latestUnlockStatusMessage
-
-    fun toggleChildLock() {
-        repo.setChildLockState(!isChildLocked.value)
+    companion object {
+        private const val KEY_DEVICE_ROLE = "key_device_role"
+        private const val KEY_DEVICE_ID = "key_device_id"
+        private const val KEY_DEVICE_NAME = "key_device_name"
+        private const val KEY_CHILD_AGE_RANGE = "key_child_age_range"
+        private const val KEY_CHILD_AVATAR = "key_child_avatar"
+        private const val KEY_PARENT_PIN_HASH = "key_parent_pin_hash"
+        private const val KEY_PARENT_PIN_SALT = "key_parent_pin_salt"
+        private const val KEY_ACTIVE_THEME = "key_active_theme"
+        private const val KEY_LANGUAGE = "key_language"
+        private const val KEY_ANIMATIONS_ENABLED = "key_animations_enabled"
+        private const val KEY_SOUND_ENABLED = "key_sound_enabled"
+        private const val KEY_IS_CHILD_LOCKED = "key_is_child_locked"
+        private const val KEY_INACTIVITY_TIMEOUT = "key_inactivity_timeout"
+        private const val KEY_KIOSK_MODE_ENABLED = "key_kiosk_mode_enabled"
+        private const val KEY_PAIRED_PARENT_DEVICE_ID = "key_paired_parent_device_id"
+        private const val KEY_AUTH_TOKEN = "key_auth_token"
+        private const val KEY_SESSION_END_MILLIS = "key_session_end_millis"
+        private const val KEY_SESSION_ACTIVE = "key_session_active"
     }
-
-    fun sendUnlockRequest(minutes: Int = 30) {
-        requestUnlockFromParent(minutes)
-    }
-
-    // Pairing Session State
-    private val _parentPairingCode = MutableStateFlow<String?>(null)
-    val parentPairingCode: StateFlow<String?> = _parentPairingCode.asStateFlow()
-
-    private val _pairingTargetDevice = MutableStateFlow<PairedChildDevice?>(null)
-    val pairingTargetDevice: StateFlow<PairedChildDevice?> = _pairingTargetDevice.asStateFlow()
-
-    private val _pairingSuccess = MutableStateFlow(false)
-    val pairingSuccess: StateFlow<Boolean> = _pairingSuccess.asStateFlow()
-
-    // Temporary Code Generation State
-    private val _activeTempCode = MutableStateFlow<TempUnlockCode?>(null)
-    val activeTempCode: StateFlow<TempUnlockCode?> = _activeTempCode.asStateFlow()
-
-    private val _tempCodeRemainingSeconds = MutableStateFlow(0)
-    val tempCodeRemainingSeconds: StateFlow<Int> = _tempCodeRemainingSeconds.asStateFlow()
-    private var codeTimerJob: Job? = null
-
-    // App Preferences UI State
-    private val _animationsEnabled = MutableStateFlow(prefs.isAnimationsEnabled())
-    val animationsEnabled: StateFlow<Boolean> = _animationsEnabled.asStateFlow()
-
-    private val _currentLanguage = MutableStateFlow(prefs.getLanguage())
-    val currentLanguage: StateFlow<String> = _currentLanguage.asStateFlow()
-
-    private val _inactivityTimeout = MutableStateFlow(prefs.getInactivityTimeout())
-    val inactivityTimeout: StateFlow<Int> = _inactivityTimeout.asStateFlow()
-
-    private val _childName = MutableStateFlow(prefs.getDeviceName())
-    val childName: StateFlow<String> = _childName.asStateFlow()
-
-    // Idle Detection
-    private var idleJob: Job? = null
-    private var lastUserInteractionTime = System.currentTimeMillis()
 
     init {
-        resetIdleTimer()
-    }
-
-    // Role Selection
-    fun selectDeviceRole(role: DeviceRole) {
-        prefs.setDeviceRole(role)
-        _deviceRole.value = role
-
-        if (role == DeviceRole.CHILD) {
-            app.discoveryManager.startAdvertising(
-                deviceId = prefs.getDeviceId(),
-                deviceName = prefs.getDeviceName()
-            )
-            KidLockDeviceService.startService(app)
-        } else {
-            app.discoveryManager.stopAdvertising()
+        if (getDeviceId().isEmpty()) {
+            val generatedId = "KID-" + UUID.randomUUID().toString().substring(0, 8).uppercase()
+            prefs.edit().putString(KEY_DEVICE_ID, generatedId).apply()
+        }
+        if (getAuthToken().isEmpty()) {
+            val token = UUID.randomUUID().toString()
+            prefs.edit().putString(KEY_AUTH_TOKEN, token).apply()
         }
     }
 
-    fun resetDeviceRole() {
-        prefs.setDeviceRole(DeviceRole.UNSET)
-        _deviceRole.value = DeviceRole.UNSET
-        app.discoveryManager.stopAdvertising()
-        app.discoveryManager.stopDiscovery()
+    fun getDeviceId(): String {
+        return prefs.getString(KEY_DEVICE_ID, "") ?: ""
     }
 
-    // Parent PIN Verification
-    fun verifyPin(pin: String): Boolean {
-        return prefs.verifyParentPin(pin)
+    fun getAuthToken(): String {
+        return prefs.getString(KEY_AUTH_TOKEN, "") ?: ""
     }
 
-    fun saveParentPin(pin: String) {
-        prefs.setParentPin(pin)
+    fun getDeviceRole(): DeviceRole {
+        val roleStr = prefs.getString(KEY_DEVICE_ROLE, DeviceRole.UNSET.name) ?: DeviceRole.UNSET.name
+        return try {
+            DeviceRole.valueOf(roleStr)
+        } catch (e: Exception) {
+            DeviceRole.UNSET
+        }
+    }
+
+    fun setDeviceRole(role: DeviceRole) {
+        prefs.edit().putString(KEY_DEVICE_ROLE, role.name).apply()
+    }
+
+    fun getDeviceName(): String {
+        val defaultName = if (getDeviceRole() == DeviceRole.PARENT) "Parent Phone" else "Kid's Tablet"
+        return prefs.getString(KEY_DEVICE_NAME, defaultName) ?: defaultName
+    }
+
+    fun setDeviceName(name: String) {
+        prefs.edit().putString(KEY_DEVICE_NAME, name).apply()
+    }
+
+    fun getChildAgeRange(): String {
+        return prefs.getString(KEY_CHILD_AGE_RANGE, "6-10") ?: "6-10"
+    }
+
+    fun setChildAgeRange(age: String) {
+        prefs.edit().putString(KEY_CHILD_AGE_RANGE, age).apply()
+    }
+
+    fun getChildAvatar(): String {
+        return prefs.getString(KEY_CHILD_AVATAR, "mascot_astronaut") ?: "mascot_astronaut"
+    }
+
+    fun setChildAvatar(avatar: String) {
+        prefs.edit().putString(KEY_CHILD_AVATAR, avatar).apply()
     }
 
     fun hasParentPin(): Boolean {
-        return prefs.hasParentPin()
+        return prefs.getString(KEY_PARENT_PIN_HASH, null) != null
     }
 
-    // Wi-Fi Discovery & Pairing
-    fun startSearchingDevices() {
-        repo.discoveryManager.startDiscovery()
+    fun setParentPin(pin: String) {
+        val salt = generateRandomSalt()
+        val hash = hashPin(pin, salt)
+        prefs.edit()
+            .putString(KEY_PARENT_PIN_SALT, salt)
+            .putString(KEY_PARENT_PIN_HASH, hash)
+            .apply()
     }
 
-    fun stopSearchingDevices() {
-        repo.discoveryManager.stopDiscovery()
+    fun verifyParentPin(enteredPin: String): Boolean {
+        val salt = prefs.getString(KEY_PARENT_PIN_SALT, null) ?: return false
+        val savedHash = prefs.getString(KEY_PARENT_PIN_HASH, null) ?: return false
+        val inputHash = hashPin(enteredPin, salt)
+        return savedHash == inputHash
     }
 
-    fun startPairingWithDevice(childDevice: PairedChildDevice) {
-        viewModelScope.launch {
-            val code = prefs.generateSecure6DigitCode()
-            _parentPairingCode.value = code
-            _pairingTargetDevice.value = childDevice
-            val sent = repo.initiatePairing(childDevice, code)
-            if (sent) {
-                _pairingSuccess.value = true
-            }
-        }
+    private fun generateRandomSalt(): String {
+        val random = SecureRandom()
+        val saltBytes = ByteArray(16)
+        random.nextBytes(saltBytes)
+        return saltBytes.joinToString("") { "%02x".format(it) }
     }
 
-    fun acceptPairingRequest(request: P2PMessage.PairRequest) {
-        viewModelScope.launch {
-            repo.acceptChildPairing(request)
-        }
+    private fun hashPin(pin: String, salt: String): String {
+        val md = MessageDigest.getInstance("SHA-256")
+        val digest = md.digest((pin + salt).toByteArray(Charsets.UTF_8))
+        return digest.joinToString("") { "%02x".format(it) }
     }
 
-    fun rejectPairingRequest(request: P2PMessage.PairRequest) {
-        viewModelScope.launch {
-            repo.rejectChildPairing(request)
-        }
+    fun getActiveThemeId(): String {
+        return prefs.getString(KEY_ACTIVE_THEME, "space") ?: "space"
     }
 
-    fun clearPairingSession() {
-        _parentPairingCode.value = null
-        _pairingTargetDevice.value = null
-        _pairingSuccess.value = false
+    fun setActiveThemeId(themeId: String) {
+        prefs.edit().putString(KEY_ACTIVE_THEME, themeId).apply()
     }
 
-    // Remote Unlock Operations
-    fun unlockDevice(device: PairedChildDevice, minutes: Int = 30) {
-        viewModelScope.launch {
-            repo.unlockChildDeviceRemote(device, minutes)
-        }
-    }
-
-    fun lockDevice(device: PairedChildDevice) {
-        viewModelScope.launch {
-            repo.lockChildDeviceRemote(device)
-        }
-    }
-
-    fun generateTempCodeForDevice(device: PairedChildDevice, minutes: Int = 30) {
-        viewModelScope.launch {
-            codeTimerJob?.cancel()
-            val code = repo.generateTemporaryUnlockCode(device.deviceId, minutes)
-            _activeTempCode.value = code
-            _tempCodeRemainingSeconds.value = 120
-
-            codeTimerJob = viewModelScope.launch {
-                while (_tempCodeRemainingSeconds.value > 0) {
-                    delay(1000)
-                    _tempCodeRemainingSeconds.value -= 1
-                }
-                _activeTempCode.value = null
-            }
-        }
-    }
-
-    fun dismissTempCode() {
-        codeTimerJob?.cancel()
-        _activeTempCode.value = null
-        _tempCodeRemainingSeconds.value = 0
-    }
-
-    fun approveRequest(request: UnlockRequest, minutes: Int = 30) {
-        viewModelScope.launch {
-            repo.approveUnlockRequest(request, minutes)
-        }
-    }
-
-    fun denyRequest(request: UnlockRequest) {
-        viewModelScope.launch {
-            repo.denyUnlockRequest(request)
-        }
-    }
-
-    // Child Actions
-    fun requestUnlockFromParent(minutes: Int = 30) {
-        viewModelScope.launch {
-            repo.sendUnlockRequestFromChild(minutes)
-        }
-    }
-
-    fun submitUnlockCode(code: String, onResult: (Boolean) -> Unit) {
-        viewModelScope.launch {
-            val success = repo.verifyAndApplyUnlockCode(code)
-            onResult(success)
-        }
-    }
-
-    fun unlockLocallyViaPin() {
-        repo.setChildLockState(false)
-    }
-
-    fun lockLocally() {
-        repo.setChildLockState(true)
-    }
-
-    // Settings & Personalization
-    fun setAnimationsEnabled(enabled: Boolean) {
-        prefs.setAnimationsEnabled(enabled)
-        _animationsEnabled.value = enabled
+    fun getLanguage(): String {
+        return prefs.getString(KEY_LANGUAGE, "en") ?: "en"
     }
 
     fun setLanguage(lang: String) {
-        prefs.setLanguage(lang)
-        _currentLanguage.value = lang
+        prefs.edit().putString(KEY_LANGUAGE, lang).apply()
+    }
+
+    fun isAnimationsEnabled(): Boolean {
+        return prefs.getBoolean(KEY_ANIMATIONS_ENABLED, true)
+    }
+
+    fun setAnimationsEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_ANIMATIONS_ENABLED, enabled).apply()
+    }
+
+    fun isSoundEnabled(): Boolean {
+        return prefs.getBoolean(KEY_SOUND_ENABLED, true)
+    }
+
+    fun setSoundEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_SOUND_ENABLED, enabled).apply()
+    }
+
+    fun isChildLocked(): Boolean {
+        return prefs.getBoolean(KEY_IS_CHILD_LOCKED, true)
+    }
+
+    fun setChildLocked(locked: Boolean) {
+        prefs.edit().putBoolean(KEY_IS_CHILD_LOCKED, locked).apply()
+    }
+
+    fun getInactivityTimeout(): Int {
+        return prefs.getInt(KEY_INACTIVITY_TIMEOUT, 15)
     }
 
     fun setInactivityTimeout(minutes: Int) {
-        prefs.setInactivityTimeout(minutes)
-        _inactivityTimeout.value = minutes
-        resetIdleTimer()
+        prefs.edit().putInt(KEY_INACTIVITY_TIMEOUT, minutes).apply()
     }
 
-    fun setChildName(name: String) {
-        prefs.setDeviceName(name)
-        _childName.value = name
+    fun isKioskModeEnabled(): Boolean {
+        return prefs.getBoolean(KEY_KIOSK_MODE_ENABLED, false)
     }
 
-    fun selectTheme(themeId: String) {
-        repo.setActiveTheme(themeId)
+    fun setKioskModeEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_KIOSK_MODE_ENABLED, enabled).apply()
     }
 
-    fun changeRemoteTheme(device: PairedChildDevice, themeId: String) {
-        viewModelScope.launch {
-            repo.changeRemoteChildTheme(device, themeId)
-        }
+    fun getPairedParentDeviceId(): String? {
+        return prefs.getString(KEY_PAIRED_PARENT_DEVICE_ID, null)
     }
 
-    fun unpairDevice(deviceId: String) {
-        viewModelScope.launch {
-            repo.unpairDevice(deviceId)
-        }
+    fun setPairedParentDeviceId(id: String?) {
+        prefs.edit().putString(KEY_PAIRED_PARENT_DEVICE_ID, id).apply()
     }
 
-    fun renameDevice(deviceId: String, newName: String) {
-        viewModelScope.launch {
-            repo.renameDevice(deviceId, newName)
-        }
+    fun getSessionEndMillis(): Long {
+        return prefs.getLong(KEY_SESSION_END_MILLIS, 0L)
     }
 
-    // Idle Detection
-    fun notifyUserInteraction() {
-        lastUserInteractionTime = System.currentTimeMillis()
+    fun setSessionEndMillis(endMillis: Long) {
+        prefs.edit().putLong(KEY_SESSION_END_MILLIS, endMillis).apply()
     }
 
-    private fun resetIdleTimer() {
-        idleJob?.cancel()
-        if (prefs.getDeviceRole() == DeviceRole.CHILD) {
-            idleJob = viewModelScope.launch {
-                while (true) {
-                    delay(30_000)
-                    val elapsedMinutes = (System.currentTimeMillis() - lastUserInteractionTime) / 60_000
-                    if (elapsedMinutes >= _inactivityTimeout.value && !isChildLocked.value) {
-                        repo.setChildLockState(true)
-                    }
-                }
-            }
-        }
+    fun isSessionActive(): Boolean {
+        return prefs.getBoolean(KEY_SESSION_ACTIVE, false)
+    }
+
+    fun setSessionActive(active: Boolean) {
+        prefs.edit().putBoolean(KEY_SESSION_ACTIVE, active).apply()
+    }
+
+    fun clearSession() {
+        prefs.edit()
+            .remove(KEY_SESSION_END_MILLIS)
+            .putBoolean(KEY_SESSION_ACTIVE, false)
+            .putBoolean(KEY_IS_CHILD_LOCKED, true)
+            .apply()
+    }
+
+    fun resetApp() {
+        prefs.edit().clear().apply()
+    }
+
+    fun generateSecure6DigitCode(): String {
+        val random = SecureRandom()
+        val number = 100000 + random.nextInt(900000)
+        return number.toString()
     }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
