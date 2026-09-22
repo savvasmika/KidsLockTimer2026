@@ -1,189 +1,78 @@
-package com.example.kiosk
+package com.example.data.local
 
-import android.app.Activity
-import android.app.ActivityManager
-import android.app.admin.DevicePolicyManager
-import android.content.ComponentName
 import android.content.Context
-import android.os.Build
-import android.util.Log
-import android.view.View
-import android.view.WindowInsets
-import android.view.WindowInsetsController
-import android.view.WindowManager
-import com.example.service.KidLockAdminReceiver
+import android.content.SharedPreferences
+import com.example.model.DeviceRole
+import java.security.MessageDigest
+import java.security.SecureRandom
+import java.util.UUID
 
-class KioskManager(private val context: Context) {
+class SecurityPreferences(context: Context) {
+    private val prefs: SharedPreferences = context.getSharedPreferences("kidlock_secure_prefs", Context.MODE_PRIVATE)
 
     companion object {
-        private const val TAG = "KidLock_Kiosk"
+        private const val KEY_DEVICE_ROLE = "key_device_role"
+        private const val KEY_DEVICE_ID = "key_device_id"
+        private const val KEY_DEVICE_NAME = "key_device_name"
+        private const val KEY_PARENT_PIN_HASH = "key_parent_pin_hash"
+        private const val KEY_PARENT_PIN_SALT = "key_parent_pin_salt"
+        private const val KEY_ACTIVE_THEME = "key_active_theme"
+        private const val KEY_LANGUAGE = "key_language"
+        private const val KEY_ANIMATIONS_ENABLED = "key_animations_enabled"
+        private const val KEY_SOUND_ENABLED = "key_sound_enabled"
+        private const val KEY_IS_CHILD_LOCKED = "key_is_child_locked"
+        private const val KEY_INACTIVITY_TIMEOUT = "key_inactivity_timeout"
+        private const val KEY_KIOSK_MODE_ENABLED = "key_kiosk_mode_enabled"
+        private const val KEY_PAIRED_PARENT_DEVICE_ID = "key_paired_parent_device_id"
+        private const val KEY_AUTH_TOKEN = "key_auth_token"
+        private const val KEY_SESSION_END_MILLIS = "key_session_end_millis"
+        private const val KEY_SESSION_ACTIVE = "key_session_active"
     }
 
-    private val devicePolicyManager: DevicePolicyManager? =
-        context.getSystemService(Context.DEVICE_POLICY_SERVICE) as? DevicePolicyManager
-
-    private val adminComponent = ComponentName(context, KidLockAdminReceiver::class.java)
-
-    fun isDeviceOwner(): Boolean {
-        return try {
-            devicePolicyManager?.isDeviceOwnerApp(context.packageName) == true
-        } catch (e: Exception) {
-            Log.w(TAG, "Error checking device owner: ${e.message}")
-            false
-        }
+    init {
+        if (getDeviceId().isEmpty()) prefs.edit().putString(KEY_DEVICE_ID, "KID-${UUID.randomUUID().toString().take(8).uppercase()}").apply()
+        if (getAuthToken().isEmpty()) prefs.edit().putString(KEY_AUTH_TOKEN, UUID.randomUUID().toString()).apply()
     }
 
-    fun isProfileOwner(): Boolean {
-        return try {
-            devicePolicyManager?.isProfileOwnerApp(context.packageName) == true
-        } catch (e: Exception) {
-            false
-        }
-    }
+    fun getDeviceId() = prefs.getString(KEY_DEVICE_ID, "") ?: ""
+    fun getAuthToken() = prefs.getString(KEY_AUTH_TOKEN, "") ?: ""
+    fun getDeviceRole(): DeviceRole = runCatching { DeviceRole.valueOf(prefs.getString(KEY_DEVICE_ROLE, DeviceRole.UNSET.name)!!) }.getOrDefault(DeviceRole.UNSET)
+    fun setDeviceRole(role: DeviceRole) { prefs.edit().putString(KEY_DEVICE_ROLE, role.name).apply() }
+    fun getDeviceName(): String = prefs.getString(KEY_DEVICE_NAME, if (getDeviceRole() == DeviceRole.PARENT) "Parent Phone" else "Kid's Tablet") ?: "Kid's Tablet"
+    fun setDeviceName(name: String) { prefs.edit().putString(KEY_DEVICE_NAME, name).apply() }
+    fun getChildAgeRange() = "6-10"
+    fun setChildAgeRange(@Suppress("UNUSED_PARAMETER") age: String) {}
+    fun getChildAvatar() = "mascot_astronaut"
+    fun setChildAvatar(@Suppress("UNUSED_PARAMETER") avatar: String) {}
 
-    fun isLockTaskPermitted(): Boolean {
-        return try {
-            devicePolicyManager?.isLockTaskPermitted(context.packageName) == true
-        } catch (e: Exception) {
-            false
-        }
-    }
+    fun hasParentPin() = prefs.getString(KEY_PARENT_PIN_HASH, null) != null
+    fun setParentPin(pin: String) { val salt = salt(); prefs.edit().putString(KEY_PARENT_PIN_SALT, salt).putString(KEY_PARENT_PIN_HASH, hash(pin, salt)).apply() }
+    fun verifyParentPin(pin: String): Boolean { val salt = prefs.getString(KEY_PARENT_PIN_SALT, null) ?: return false; return prefs.getString(KEY_PARENT_PIN_HASH, null) == hash(pin, salt) }
+    private fun salt(): String = ByteArray(16).also { SecureRandom().nextBytes(it) }.joinToString("") { "%02x".format(it) }
+    private fun hash(value: String, salt: String): String = MessageDigest.getInstance("SHA-256").digest((value + salt).toByteArray()).joinToString("") { "%02x".format(it) }
 
-    fun configureDeviceOwnerKiosk(): Boolean {
-        if (!isDeviceOwner() || devicePolicyManager == null) return false
-        return try {
-            devicePolicyManager.setLockTaskPackages(adminComponent, arrayOf(context.packageName))
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                devicePolicyManager.setLockTaskFeatures(
-                    adminComponent,
-                    DevicePolicyManager.LOCK_TASK_FEATURE_NONE
-                )
-            }
-            Log.d(TAG, "Device Owner Kiosk configured successfully")
-            true
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to configure Device Owner Kiosk", e)
-            false
-        }
-    }
+    fun getActiveThemeId() = prefs.getString(KEY_ACTIVE_THEME, "space") ?: "space"
+    fun setActiveThemeId(id: String) { prefs.edit().putString(KEY_ACTIVE_THEME, id).apply() }
+    fun getLanguage() = prefs.getString(KEY_LANGUAGE, "en") ?: "en"
+    fun setLanguage(value: String) { prefs.edit().putString(KEY_LANGUAGE, value).apply() }
+    fun isAnimationsEnabled() = prefs.getBoolean(KEY_ANIMATIONS_ENABLED, true)
+    fun setAnimationsEnabled(value: Boolean) { prefs.edit().putBoolean(KEY_ANIMATIONS_ENABLED, value).apply() }
+    fun isSoundEnabled() = prefs.getBoolean(KEY_SOUND_ENABLED, true)
+    fun setSoundEnabled(value: Boolean) { prefs.edit().putBoolean(KEY_SOUND_ENABLED, value).apply() }
+    fun isChildLocked() = prefs.getBoolean(KEY_IS_CHILD_LOCKED, true)
+    fun setChildLocked(value: Boolean) { prefs.edit().putBoolean(KEY_IS_CHILD_LOCKED, value).apply() }
+    fun getInactivityTimeout() = prefs.getInt(KEY_INACTIVITY_TIMEOUT, 15)
+    fun setInactivityTimeout(value: Int) { prefs.edit().putInt(KEY_INACTIVITY_TIMEOUT, value).apply() }
+    fun isKioskModeEnabled() = prefs.getBoolean(KEY_KIOSK_MODE_ENABLED, false)
+    fun setKioskModeEnabled(value: Boolean) { prefs.edit().putBoolean(KEY_KIOSK_MODE_ENABLED, value).apply() }
+    fun getPairedParentDeviceId() = prefs.getString(KEY_PAIRED_PARENT_DEVICE_ID, null)
+    fun setPairedParentDeviceId(id: String?) { prefs.edit().putString(KEY_PAIRED_PARENT_DEVICE_ID, id).apply() }
 
-    fun startKioskMode(activity: Activity) {
-        try {
-            configureDeviceOwnerKiosk()
-
-            val activityManager = activity.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager
-            val lockTaskState = activityManager?.lockTaskModeState ?: ActivityManager.LOCK_TASK_MODE_NONE
-
-            if (lockTaskState == ActivityManager.LOCK_TASK_MODE_NONE) {
-                activity.startLockTask()
-                Log.d(TAG, "startLockTask() called")
-            }
-
-            applyImmersiveMode(activity)
-        } catch (e: Exception) {
-            Log.e(TAG, "Error entering lock task mode: ${e.message}")
-        }
-    }
-
-    fun stopKioskMode(activity: Activity) {
-        try {
-            val activityManager = activity.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager
-            val lockTaskState = activityManager?.lockTaskModeState ?: ActivityManager.LOCK_TASK_MODE_NONE
-
-            if (lockTaskState != ActivityManager.LOCK_TASK_MODE_NONE) {
-                activity.stopLockTask()
-                Log.d(TAG, "stopLockTask() called")
-            }
-
-            restoreSystemUI(activity)
-        } catch (e: Exception) {
-            Log.e(TAG, "Error stopping lock task mode: ${e.message}")
-        }
-    }
-
-    fun applyImmersiveMode(activity: Activity) {
-        activity.window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            activity.window.setDecorFitsSystemWindows(false)
-            val controller = activity.window.insetsController
-            if (controller != null) {
-                controller.hide(WindowInsets.Type.statusBars() or WindowInsets.Type.navigationBars())
-                controller.systemBarsBehavior = WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-            }
-        } else {
-            @Suppress("DEPRECATION")
-            activity.window.decorView.systemUiVisibility = (
-                View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
-                    or View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-                    or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
-                    or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-                    or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
-                    or View.SYSTEM_UI_FLAG_FULLSCREEN
-            )
-        }
-    }
-
-    fun restoreSystemUI(activity: Activity) {
-        activity.window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            activity.window.setDecorFitsSystemWindows(true)
-            val controller = activity.window.insetsController
-            controller?.show(WindowInsets.Type.statusBars() or WindowInsets.Type.navigationBars())
-        } else {
-            @Suppress("DEPRECATION")
-            activity.window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_VISIBLE
-        }
-    }
-
-    fun getKioskStatusDescription(): String {
-        val isOwner = isDeviceOwner()
-        val isPermitted = isLockTaskPermitted()
-        return when {
-            isOwner -> "Device Owner Mode (Exit-Proof Kiosk Active)"
-            isPermitted -> "Lock Task Whitelisted"
-            else -> "Standard App Pinning Mode (User Confirmation Required)"
-        }
-    }
+    fun getSessionEndMillis() = prefs.getLong(KEY_SESSION_END_MILLIS, 0L)
+    fun setSessionEndMillis(value: Long) { prefs.edit().putLong(KEY_SESSION_END_MILLIS, value).apply() }
+    fun isSessionActive() = prefs.getBoolean(KEY_SESSION_ACTIVE, false)
+    fun setSessionActive(value: Boolean) { prefs.edit().putBoolean(KEY_SESSION_ACTIVE, value).apply() }
+    fun clearSession() { prefs.edit().remove(KEY_SESSION_END_MILLIS).putBoolean(KEY_SESSION_ACTIVE, false).putBoolean(KEY_IS_CHILD_LOCKED, true).apply() }
+    fun resetApp() { prefs.edit().clear().apply() }
+    fun generateSecure6DigitCode() = (100000 + SecureRandom().nextInt(900000)).toString()
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
