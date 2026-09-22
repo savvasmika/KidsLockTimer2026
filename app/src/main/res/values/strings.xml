@@ -1,0 +1,201 @@
+<resources>
+    <string name="app_name">KidLock</string>
+    <string name="tagline">Smart screen time made simple</string>
+    <string name="device_admin_label">KidLock Parental Guardian</string>
+    <string name="device_admin_description">Allows KidLock to manage screen lock time and enforce parental controls safely.</string>
+
+    <!-- Role Selection -->
+    <string name="who_is_using">Who is using this device?</string>
+    <string name="select_role_desc">Choose whether this tablet or phone will be used by a parent or a child.</string>
+    <string name="parent_device">Parent Device</string>
+    <string name="parent_device_desc">Control screen time, send unlock codes, and manage rules remotely.</string>
+    <string name="child_device">Child Device</string>
+    <string name="child_device_desc">Friendly lock screen, ask for screen time, fun themes, and break reminders.</string>
+    <string name="get_started">Get Started</string>
+
+    <!-- Language Selection -->
+    <string name="select_language">Select Language</string>
+    <string name="lang_english">English (US)</string>
+    <string name="lang_greek">Ελληνικά (Greek)</string>
+
+    <!-- Onboarding & PIN Setup -->
+    <string name="create_parent_pin">Create Parent PIN</string>
+    <string name="create_parent_pin_desc">Set a 4-digit master PIN to secure parent settings and lock controls.</string>
+    <string name="confirm_parent_pin">Confirm Parent PIN</string>
+    <string name="enter_pin">Enter Parent PIN</string>
+    <string name="enter_pin_title">Parent Verification</string>
+    <string name="enter_pin_desc">Enter your 4-digit Parent PIN to continue.</string>
+    <string name="pin_mismatch">PINs do not match. Please try again.</string>
+    <string name="pin_incorrect">Incorrect PIN. Please try again.</string>
+    <string name="pin_saved">Parent PIN securely saved!</string>
+    <string name="change_pin">Change Parent PIN</string>
+
+    <!-- Child Setup & Personalization -->
+    <string name="child_setup_title">Child Device Setup</string>
+    <string name="child_name">Child\'s Name</string>
+    <string name="child_name_hint">e.g., Giorgos, Maya, Alex</string>
+    <string name="child_age">Age Range</string>
+    <string name="avatar_title">Choose an Avatar</string>
+    <string name="save_continue">Save &amp; Continue</string>
+
+    <!-- Local Wi-Fi Discovery & Pairing -->
+    <string name="finding_devices">Searching for nearby KIDLOCK devices…</string>
+    <string name="wifi_discovery_desc">Make sure both devices are on the same Wi-Fi network.</string>
+    <string name="waiting_for_parent">Waiting for Parent Device…</string>
+    <string name="waiting_for_parent_sub">Open KIDLOCK on the parent phone and search for this tablet.</string>
+    <string name="waiting_for_parent_desc">Waiting for parent phone to discover and connect via Wi-Fi.</string>
+    <string name="btn_go_lock_screen">Go to Lock Screen</string>
+    <string name="nearby_devices">Nearby Devices</string>
+    <string name="pair_button">Pair</string>
+    <string name="pairing_in_progress">Pairing in progress…</string>
+    <string name="confirm_pairing">Confirm Pairing</string>
+    <string name="pairing_code_prompt">Enter or match the 6-digit confirmation code shown on the devices.</string>
+    <string name="pairing_child_prompt">Parent is trying to pair with this device.</string>
+    <string name="pair_request_title">Pairing Request</string>
+    <string name="pair_request_msg">%1$s wants to pair with this tablet.</string>
+    <string name="accept_pairing">Accept &amp; Connect</string>
+    <string name="reject_pairing">Decline</string>
+    <string name="decline_pairing">Decline</string>
+    <string name="pairing_success">Device paired successfully!</string>
+    <string name="pairing_failed">Pairing failed or timed out. Please retry.</string>
+    <string name="same_wifi">Same Wi-Fi network</string>
+    <string name="add_child_device">Add Child Device</string>
+    <string name="pair_new_device">Pair New Device</string>
+    <string name="btn_pair_new">Pair Device</string>
+
+    <!-- Parent Dashboard -->
+    <string name="parent_dashboard_title">KidLock Parent</string>
+    <string name="child_devices">Child Devices</string>
+    <string name="section_unlock_requests">Pending Unlock Requests</string>
+    <string name="section_paired_devices">Paired Child Devices</string>
+    <string name="no_paired_devices">No Child Devices Paired</string>
+    <string name="no_paired_devices_desc">Pair your child\'s tablet to control screen time, send unlock codes, and change themes remotely.</string>
+    <string name="no_devices_paired">No child devices paired yet.</string>
+    <string name="pair_first_child_prompt">Tap below to scan local Wi-Fi and pair your child\'s tablet.</string>
+    <string name="status_locked">LOCKED</string>
+    <string name="status_unlocked">UNLOCKED</string>
+    <string name="status_active">ACTIVE</string>
+    <string name="status_idle">IDLE</string>
+    <string name="battery_label">Battery: %1$d%%</string>
+    <string name="last_activity_label">Last activity: %1$s</string>
+    <string name="current_theme_label">Theme: %1$s</string>
+    <string name="current_lang_label">Language: %1$s</string>
+    <string name="unlock_child_device">Unlock Child Device</string>
+    <string name="lock_child_device">Lock Child Device</string>
+    <string name="btn_unlock_now">Unlock</string>
+    <string name="btn_lock_now">Lock Now</string>
+    <string name="btn_temp_code">Code</string>
+    <string name="send_unlock_code">Send Unlock Code</string>
+    <string name="device_settings">Device Settings</string>
+    <string name="device_settings_title">Device Settings</string>
+    <string name="theme_gallery">Themes</string>
+    <string name="theme_gallery_title">Themes Gallery</string>
+    <string name="animations_enabled">Theme Animations</string>
+    <string name="animations_enabled_desc">Enable floating stars, particles, and character animations.</string>
+    <string name="unlock_requests">Unlock Requests</string>
+    <string name="quick_lock_all">Quick Lock</string>
+
+    <!-- Connection Status -->
+    <string name="conn_wifi">Same Wi-Fi</string>
+    <string name="conn_remote">Cloud Relay</string>
+    <string name="conn_connecting">Connecting…</string>
+    <string name="conn_offline">Offline</string>
+    <string name="conn_unavailable">Connection unavailable</string>
+
+    <!-- Remote Unlock & Requests -->
+    <string name="unlock_request_title">Unlock Request</string>
+    <string name="unlock_request_desc">%1$s is requesting screen time.</string>
+    <string name="unlock_now">Unlock Now</string>
+    <string name="generate_code">Generate Code</string>
+    <string name="grant_minutes">Grant %1$d min</string>
+    <string name="deny_request">Deny</string>
+    <string name="request_sent">Unlock request sent to parent!</string>
+    <string name="request_sent_notice">Request sent to parent\'s phone!</string>
+    <string name="request_approved">Parent unlocked your tablet!</string>
+    <string name="request_denied">Unlock request was declined by parent.</string>
+    <string name="btn_request_time">Ask for More Time</string>
+    <string name="btn_enter_code">Enter Unlock Code</string>
+
+    <!-- Temporary Unlock Code -->
+    <string name="temp_code_title">Temporary Unlock Code</string>
+    <string name="temp_code_desc">Share this 6-digit one-time code with your child to unlock their tablet.</string>
+    <string name="temp_code_expires">Expires in: %1$d s</string>
+    <string name="enter_code_title">Enter Unlock Code</string>
+    <string name="enter_code_desc">Enter the 6-digit code provided by your parent.</string>
+    <string name="invalid_code_error">Invalid or expired code. Try again.</string>
+    <string name="enter_unlock_code">Enter Unlock Code</string>
+    <string name="unlock_code_hint">6-digit code</string>
+    <string name="submit_code">Unlock Tablet</string>
+    <string name="code_invalid">Invalid or already used code.</string>
+    <string name="code_expired">This code has expired.</string>
+    <string name="code_success">Code accepted! Tablet unlocked.</string>
+    <string name="cancel">Cancel</string>
+    <string name="close">Close</string>
+
+    <!-- Child Lock Screen -->
+    <string name="break_time_title">⭐ TIME TO TAKE A BREAK! ⭐</string>
+    <string name="break_time_desc">Your tablet is taking a little rest. Stretch your arms, drink some water, or play outside!</string>
+    <string name="ask_parent">Ask Parent for Screen Time</string>
+    <string name="enter_code_tab">I Have a Code</string>
+    <string name="emergency_parent_pin">Parent Access (PIN)</string>
+    <string name="tablet_locked_title">TABLET LOCKED</string>
+    <string name="tablet_locked_sub">Ask your parent for permission to continue.</string>
+    <string name="unlocked_welcome">✨ Tablet Unlocked! Have fun responsibly! ✨</string>
+
+    <!-- Idle & Inactivity Settings -->
+    <string name="inactivity_timeout">Inactivity / Idle Timeout</string>
+    <string name="inactivity_timeout_desc">Locks the tablet automatically after inactivity.</string>
+    <string name="timeout_5min">5 Minutes</string>
+    <string name="timeout_10min">10 Minutes</string>
+    <string name="timeout_15min">15 Minutes</string>
+    <string name="timeout_20min">20 Minutes</string>
+    <string name="timeout_30min">30 Minutes</string>
+    <string name="timeout_custom">Custom Minutes</string>
+    <string name="daily_limit">Daily Screen Time Limit</string>
+    <string name="minutes_remaining">%1$d min remaining today</string>
+
+    <!-- Themes Gallery -->
+    <string name="theme_space">🌌 Space Odyssey</string>
+    <string name="theme_galaxy">🚀 Cosmic Galaxy</string>
+    <string name="theme_gaming">🎮 Retro Gaming</string>
+    <string name="theme_dinosaurs">🦖 Dino World</string>
+    <string name="theme_animals">🐼 Cute Animals</string>
+    <string name="theme_racing">🏎 Turbo Racing</string>
+    <string name="theme_sports">⚽ Sports Arena</string>
+    <string name="theme_fantasy">🧙 Magic Fantasy</string>
+    <string name="theme_ocean">🌊 Deep Ocean</string>
+    <string name="theme_robots">🤖 Robot Lab</string>
+    <string name="theme_colorful">🌈 Rainbow Glow</string>
+    <string name="theme_adventure">🌳 Safari Jungle</string>
+    <string name="apply_theme">Apply Theme</string>
+    <string name="theme_applied">Theme updated!</string>
+
+    <!-- Settings & Management -->
+    <string name="settings_title">KidLock Settings</string>
+    <string name="animations_toggle">UI Animations</string>
+    <string name="sound_effects_toggle">Playful Sounds</string>
+    <string name="lock_task_mode">Kiosk / True Screen Lock Mode</string>
+    <string name="kiosk_mode_desc">Official Android LockTask mode keeps the tablet safely in the KidLock app during lock hours.</string>
+    <string name="kiosk_setup_wizard">Kiosk Setup Guide</string>
+    <string name="device_owner_note">Device Owner provisioning via Android ADB or MDM allows 100% escape-proof lock and remote screen disabling.</string>
+    <string name="rename_device">Rename Device</string>
+    <string name="unpair_device">Unpair Device</string>
+    <string name="unpair_confirm">Are you sure you want to unpair this child tablet? All parental remote controls will be disconnected.</string>
+    <string name="delete">Delete</string>
+    <string name="save">Save</string>
+    <string name="switch_role">Switch Role (Reset)</string>
+    <string name="switch_role_confirm">Reset this device and choose between Parent or Child role again?</string>
+    <string name="backend_cloud_title">Cloud &amp; Push Service</string>
+    <string name="backend_status_ready">Backend API &amp; WebSocket ready</string>
+    <string name="backend_simulated_cloud">Cloud relay active (Dual-channel Wi-Fi / HTTPS)</string>
+
+    <!-- Notifications -->
+    <string name="notif_channel_parent">KidLock Parent Alerts</string>
+    <string name="notif_channel_parent_desc">Alerts for unlock requests and pairing</string>
+    <string name="notif_channel_child">KidLock Status</string>
+    <string name="notif_channel_child_desc">Screen time and break reminders</string>
+    <string name="notif_unlock_request_title">KidLock: Unlock Request</string>
+    <string name="notif_unlock_request_msg">%1$s wants permission to unlock their tablet.</string>
+    <string name="notif_pairing_title">KidLock: Pairing Request</string>
+    <string name="notif_pairing_msg">A new tablet is requesting to pair with your device.</string>
+</resources>

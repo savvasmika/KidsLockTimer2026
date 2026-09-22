@@ -1,0 +1,6 @@
+{
+  "name": "KidLock",
+  "description": "Tablet screen time control, remote locking, and Wi-Fi/Internet pairing for parents and kids.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
